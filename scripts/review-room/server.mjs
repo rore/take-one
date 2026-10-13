@@ -47,4 +47,4 @@ http.createServer(async (req, res) => {
   if (p === '/api/send' && req.method === 'POST') { const b = await body(req), d = load(); d.sent.push({ at: new Date().toISOString(), cut: String(b.cut || ''), open: d.notes.filter((n) => !n.done).length }); save(d);
     const line = `SENT ${d.notes.filter((n) => !n.done).length} open notes on ${b.cut || ''}`; console.log(line); fs.appendFileSync(LOG, line + '\n'); return json(res, 200, { ok: true }); }
   res.writeHead(404); res.end('not found');
-}).listen(PORT, '127.0.0.1', () => console.log(`Take One review room on http://localhost:${PORT}`));
+}).listen(PORT, '127.0.0.1', function () { console.log(`Take One review room on http://localhost:${this.address().port}`); });

@@ -4,6 +4,7 @@
 #   reads assets/seq/<name>/fNNN.jpg (made by scripts/clip.py), writes assets/cut/seq/<name>/fNNN.png (alpha = the subject, scripts/matte.swift; macOS only, compiled on first use)
 #   and assets/cutseq.js (which clips have cut-outs and for how many frames)
 import sys, os, subprocess, json, re
+if sys.platform != 'darwin': sys.exit('cutseq.py requires macOS Vision; use supplied transparent PNGs on other platforms')
 if len(sys.argv) < 2: sys.exit('usage (from the film folder): python3 cutseq.py <name> [frames=15]   (macOS only; run clip.py first)')
 name = sys.argv[1]; n = int(sys.argv[2]) if len(sys.argv) > 2 else 15
 src, dst = f'assets/seq/{name}', f'assets/cut/seq/{name}'; os.makedirs(dst, exist_ok=True)

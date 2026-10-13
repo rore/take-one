@@ -295,8 +295,9 @@ const run = async () => {
   console.log(`QUALITY GATE   ${filmPath}   viewport ${W}x${H}`);
   const chromium = loadChromium();
   const { srv, url } = await serve(path.dirname(filmPath));
-  const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--ignore-gpu-blocklist'] });
+  let browser;
   try {
+    browser = await chromium.launch({ channel: 'chrome', headless: true, args: process.platform === 'darwin' ? ['--use-angle=metal', '--ignore-gpu-blocklist'] : [] });
     const { pageHolds, pageCuts, pageFootage } = await determinism(browser, url, path.basename(filmPath));
     contractScan(filmPath);
     const mp4 = opt.mp4 && path.resolve(opt.mp4);
@@ -308,7 +309,7 @@ const run = async () => {
       const footage = opt.footage ? String(opt.footage).split(',').map((x) => { const m = x.trim().match(/^([\d.]+)-([\d.]+)@([\d.]+)$/); if (!m) throw new Error(`--footage wants "from-to@fps", got "${x}"`); return [Number(m[1]), Number(m[2]), Number(m[3])]; }) : (pageFootage ?? []);
       pops(s, opt.cuts ? String(opt.cuts).split(',').map(Number) : (pageCuts ?? []), footage);
     } else for (const [k, t] of [[3, 'DEAD AIR  something visibly moves in every half second'], [4, 'POPS  no frame jumps 3x more than its neighbours unless it is a declared cut']]) { head(k, t); note('skipped: no --mp4 given', 'run again with --mp4 after export'); }
-  } finally { await browser.close(); srv.close(); }
+  } finally { try { await browser?.close(); } finally { srv.close(); } }
   console.log(`\n${'='.repeat(58)}\nGATE: ${fails ? `FAIL   ${fails} of ${checks} checks failed` : `PASS   ${checks}/${checks} checks`}`);
   process.exit(fails ? 1 : 0);
 };
