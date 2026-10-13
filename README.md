@@ -22,21 +22,28 @@ https://github.com/user-attachments/assets/f2e005dc-b6b0-4023-b3d7-9bd958643022
 The maintained source fork is [rore/take-one](https://github.com/rore/take-one), based on upstream [talsiach/take-one](https://github.com/talsiach/take-one). Clone it for review or development:
 
 ```powershell
-git clone https://github.com/rore/take-one.git
-cd take-one
+git clone --branch feat/codex-windows https://github.com/rore/take-one.git take-one-codex
+cd take-one-codex
+npm ci
 node scripts/doctor.mjs
 ```
 
-For an upstream update, qualify it on a temporary branch before changing the skill you use:
+For an upstream update, create an isolated worktree, merge upstream there, qualify it, then review the result before updating the skill you use:
 
 ```powershell
 git remote add upstream https://github.com/talsiach/take-one.git
 git fetch upstream
-git switch -c qualify-upstream-update
-git rebase upstream/main
+git worktree add ..\take-one-qualify -b qualify-upstream-update HEAD
+Set-Location ..\take-one-qualify
+git merge upstream/main
+npm ci
+npm run check
+npm test
+node scripts/smoke-test.mjs
+npm run gate:self-test
 ```
 
-Review the diff and run the checks before updating your active skill checkout.
+Review the diff and checks in the worktree before updating your active skill checkout. The source fork's `main` remains the upstream base.
 
 To use it as a personal Codex skill, place or link the qualified checkout at `~/.agents/skills/take-one`, then start a new Codex session and invoke `$take-one`. Codex also supports repository skills in `.agents/skills`; explicit skill invocation varies by surface. Installation and updates are deliberate user actions. For the Windows tool behavior, optional dependencies, and update workflow, see [`references/codex-windows.md`](references/codex-windows.md).
 
@@ -55,7 +62,7 @@ bash ~/.claude/skills/take-one/scripts/doctor.sh
 
 The second line checks your machine and says what is missing and what each piece is for. After that, Claude Code knows the skill in every session. A plain `git clone https://github.com/talsiach/take-one ~/.claude/skills/take-one` works too.
 
-For Claude Code, you need Node 18 or later, Google Chrome and ffmpeg. The Windows Codex path and its limitations are documented above; the original workflow was first run on macOS.
+For Claude Code, you need Node 20 or later, Google Chrome and ffmpeg. The Windows Codex path and its limitations are documented above; the original workflow was first run on macOS.
 
 ## How to work with it
 

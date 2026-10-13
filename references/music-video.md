@@ -58,7 +58,7 @@ The Seedance lip-sync mechanics (audio conditioning, drift detection, cut-and-co
 
 A 98 s Hebrew comedy clip, 8 chapters, built by 10 agents in one afternoon. What made the fan-out work, and what broke:
 
-1. **One owner per film.** Before building, check whether another session is already directing the same project (search `~/.claude/projects/*/*.jsonl` for the project's guide file name). Two sessions writing the same `cast.js` overwrite each other. Pick one and tell the user to keep the other closed.
+1. **One owner per film.** Before building, check whether another session is already directing the same project. Use supported session-management tools; if unavailable, ask the user whether another session owns it. Never search guessed private session paths. Two sessions writing the same `cast.js` overwrite each other. Pick one owner before building.
 2. **Rig owner in parallel with the style-bible chapter.** Freeze the new rig option names in both briefs up front (`accessory:'shades'`, `lasers:0..1`, `beard:0..1`...) so the chapter animator codes against them before they exist (unknown options are ignored). The rig owner may only ADD options and must prove the approved cast renders pixel-identical with defaults.
 3. **Pre-register every chapter's `<script>` tag before the fan-out.** Parallel agents editing the shared `studio.html` race. After registration, agents own only their `chN_*.js`.
 4. **Shared render rules:** each agent renders its chapter with `--clip --range` to its own `out/chN.mp4`, never `--frames` (the frames folder is shared), check images under `out/check/chN_*`, and it keeps review renders small because 7 agents share the CPU.
