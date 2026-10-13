@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { run } from './process.mjs';
+import { isMain, run } from './process.mjs';
 
 export function pieces(duration, piece) {
   return Array.from({ length: Math.ceil(duration / piece) }, (_, i) => [i * piece, Math.min((i + 1) * piece, duration)]);
@@ -15,33 +14,22 @@ function argsOf(argv) {
   if (!out || values.some(v => !Number.isFinite(v) || v <= 0) || !Number.isInteger(values[2])) throw new Error('Usage: render-parallel <fps> <duration_s> <out.mp4> [workers=3] [piece_s=12]');
   return { fps: values[0], duration: values[1], out: resolve(out), workers: Math.floor(values[2]), piece: values[3] };
 }
-async function renderPiece(index, [start, end], fps, temp, retries = 1) {
+async function renderPiece(index, [start, end], fps, temp) {
   const video = join(temp, `p${index}.mp4`), log = join(temp, `p${index}.log`);
-  for (let attempt = 0; ; attempt++) {
-    const output = createWriteStream(log, { flags: attempt ? 'a' : 'w' });
-    const child = spawn(process.execPath, ['export.mjs', String(fps), video], {
-      env: { ...process.env, START: String(start), END: String(end) },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    child.stdout.pipe(output, { end: false });
-    child.stderr.pipe(output, { end: false });
-    let lastSize = 0, emptySince = Date.now(), stalled = false;
-    const result = await new Promise((resolve, reject) => {
-      child.once('error', reject);
-      const timer = setInterval(async () => {
-        try {
-          const size = (await stat(log)).size;
-          if (size > lastSize) { lastSize = size; emptySince = Date.now(); }
-          else if (size === 0 && Date.now() - emptySince > 60000) { stalled = true; child.kill(); }
-        } catch {}
-      }, 1000);
-      child.once('close', (code, signal) => { clearInterval(timer); resolve({ code, signal }); });
-    }).finally(() => output.end());
-    if (stalled && attempt < retries) { console.log(`piece ${index} restarted (its browser never started)`); continue; }
-    if (result.code === 0) return;
-    const tail = (await readFile(log, 'utf8').catch(() => '')).slice(-600).replace(/\r/g, '\n').split('\n').filter(line => !line.startsWith('frame=')).slice(-8).join('\n');
-    throw new Error(`piece ${index} failed${stalled ? ' after browser startup timeout' : ` (exit ${result.code ?? result.signal})`}${tail ? `:\n${tail}` : ''}`);
-  }
+  const output = createWriteStream(log);
+  const child = spawn(process.execPath, ['export.mjs', String(fps), video], {
+    env: { ...process.env, START: String(start), END: String(end) },
+    stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+  });
+  child.stdout.pipe(output, { end: false });
+  child.stderr.pipe(output, { end: false });
+  const result = await new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', (code, signal) => resolve({ code, signal }));
+  }).finally(() => output.end());
+  if (result.code === 0) return;
+  const tail = (await readFile(log, 'utf8').catch(() => '')).slice(-600).replace(/\r/g, '\n').split('\n').filter(line => !line.startsWith('frame=')).slice(-8).join('\n');
+  throw new Error(`piece ${index} failed (exit ${result.code ?? result.signal})${tail ? `:\n${tail}` : ''}`);
 }
 export async function render(argv) {
   const { fps, duration, out, workers, piece } = argsOf(argv);
@@ -71,4 +59,4 @@ export async function render(argv) {
     throw error;
   }
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) render(process.argv.slice(2)).catch(error => { console.error(error.message); process.exitCode = 1; });
+if (isMain(import.meta.url)) render(process.argv.slice(2)).catch(error => { console.error(error.message); process.exitCode = 1; });

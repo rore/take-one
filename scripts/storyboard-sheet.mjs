@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { run } from './process.mjs';
+import { join } from 'node:path';
+import { isMain, run } from './process.mjs';
 
 export async function storyboard(dir, out, columns = 4) {
   if (!dir || !out) throw new Error('Usage: storyboard-sheet <folder of frames> <out.png> [columns=4]');
@@ -24,4 +23,4 @@ export async function storyboard(dir, out, columns = 4) {
     console.log(`storyboard sheet: ${out} (${files.length} shots, read left to right, top to bottom)`);
   } finally { await rm(temp, { recursive: true, force: true }); }
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) storyboard(...process.argv.slice(2)).catch(error => { console.error(error.message); process.exitCode = 1; });
+if (isMain(import.meta.url)) storyboard(...process.argv.slice(2)).catch(error => { console.error(error.message); process.exitCode = 1; });

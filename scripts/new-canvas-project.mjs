@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { cp, mkdir, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
+import { isMain } from './process.mjs';
 
 const source = dirname(fileURLToPath(import.meta.url));
 export async function scaffold(dir) {
@@ -33,6 +34,6 @@ window.renderFrame=t=>{g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompo
 document.fonts.ready.then(()=>{window.READY=true;if(navigator.webdriver)return;let s=performance.now();const loop=n=>{window.renderFrame(((n-s)/1000)%window.FILM_DURATION);requestAnimationFrame(loop)};requestAnimationFrame(loop);});
 </script></body></html>
 `;
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (isMain(import.meta.url)) {
   scaffold(process.argv[2]).catch(error => { console.error(error.message); process.exitCode = 1; });
 }

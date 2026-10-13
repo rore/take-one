@@ -1,10 +1,12 @@
 import { spawn } from 'node:child_process';
-import { accessSync, constants } from 'node:fs';
+import { accessSync, constants, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 export function run(command, args = [], options = {}) {
   const { capture = false, ...spawnOptions } = options;
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
+      windowsHide: true,
       ...spawnOptions,
       stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
     });
@@ -31,4 +33,9 @@ export function commandPath(name) {
     }
   }
   return null;
+}
+
+export function isMain(moduleUrl, argvPath = process.argv[1]) {
+  if (!argvPath) return false;
+  try { return realpathSync(fileURLToPath(moduleUrl)) === realpathSync(argvPath); } catch { return false; }
 }

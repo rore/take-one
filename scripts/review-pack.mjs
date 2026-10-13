@@ -2,8 +2,7 @@
 import { access, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { run } from './process.mjs';
+import { isMain, run } from './process.mjs';
 
 const number = String.raw`[0-9]+(?:\.[0-9]+)?`;
 export function parseArgs(args) {
@@ -22,25 +21,38 @@ export function parseArgs(args) {
   if (ranges.some(([a, b]) => b <= a)) throw new Error('--strips ranges must end after they start');
   return { ...options, ranges };
 }
-async function emptyOrNewDirectory(path) {
+export function defaultBeats(duration) {
+  return Array.from({ length: 36 }, (_, i) => String(duration * i / 36)).join(',');
+}
+export function validateTimes({ beats = '', text = '', ranges = [] }, duration) {
+  for (const key of ['beats', 'text']) {
+    const times = key === 'beats' ? beats : text;
+    if (times && times.split(',').some(time => Number(time) >= duration)) throw new Error(`--${key} times must be earlier than the film duration (${duration}s)`);
+  }
+  if (ranges.some(([, end]) => end > duration)) throw new Error(`--strips must end at or before the film duration (${duration}s)`);
+}
+async function assertEmptyOrNewDirectory(path) {
   try {
     const entries = await readdir(path);
     if (entries.length) throw new Error(`${path} holds other files; give a new or empty folder for the pack`);
-  } catch (error) { if (error.code !== 'ENOENT') throw error; await mkdir(path, { recursive: true }); }
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
 }
 export async function buildPack(args) {
   const { video, pack, beats: beatArg, text: textArg, ranges } = parseArgs(args);
   try { await access(video); } catch { throw new Error(`no such film: ${video}`); }
-  await emptyOrNewDirectory(pack);
+  await assertEmptyOrNewDirectory(pack);
   const duration = Number((await run('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', video], { capture: true })).stdout.trim());
   if (!Number.isFinite(duration) || duration <= 0) throw new Error('could not read film duration');
+  const beats = beatArg || defaultBeats(duration);
+  validateTimes({ beats, text: textArg, ranges }, duration);
+  await assertEmptyOrNewDirectory(pack);
+  await mkdir(pack, { recursive: true });
   const temp = await mkdtemp(join(tmpdir(), 'take-one-review-'));
   try {
     const D = Math.floor(duration);
     for (let start = 0, part = 1; start < D; start += 40, part++) {
       await run('ffmpeg', ['-v', 'error', '-y', '-ss', String(start), '-t', '39.9', '-i', video, '-vf', 'fps=1,scale=400:-1,tile=8x5:padding=4:color=gray', '-frames:v', '1', resolve(pack, `sheet_1fps_part${part}.png`)]);
     }
-    const beats = beatArg || Array.from({ length: 36 }, (_, i) => (duration * i / 35.5).toFixed(1)).join(',');
     const beatTimes = beats.split(',');
     for (let i = 0; i < beatTimes.length; i++) {
       const time = beatTimes[i];
@@ -61,4 +73,4 @@ export async function buildPack(args) {
     console.log(`pack in ${pack}: ${(await readdir(pack)).length} files. Fill in WORDS-AND-SOUND.md before handing it over.`);
   } finally { await rm(temp, { recursive: true, force: true }); }
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) buildPack(process.argv.slice(2)).catch(error => { console.error(error.message); process.exitCode = 1; });
+if (isMain(import.meta.url)) buildPack(process.argv.slice(2)).catch(error => { console.error(error.message); process.exitCode = 1; });
