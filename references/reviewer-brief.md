@@ -14,7 +14,7 @@ The reviewer is a new agent that has seen none of the work. It stands in for a s
 ## Build the pack
 
 ```bash
-bash <skill>/scripts/review-pack.sh out/cut.mp4 out/review-pack \
+node <installed skill directory>/scripts/review-pack.mjs out/cut.mp4 out/review-pack \
   --beats "0,1.5,4.8,9.6,..."          # one time per story beat (default: 36 evenly spaced)
   --strips "9.2-11.6,66.0-67.2"         # a range across every fast move, hard cut and handoff
   --text "4.8,9.6,14.5,..."             # frames that carry words, for the phone-width sheet

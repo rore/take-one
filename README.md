@@ -7,7 +7,7 @@
 
 <h3 align="center">A whole creative studio in one skill</h3>
 
-<p align="center">Type one line in Claude Code. Get a finished short film.</p>
+<p align="center">Type one line in Claude Code or Codex. Get a finished short film.</p>
 
 https://github.com/user-attachments/assets/f2e005dc-b6b0-4023-b3d7-9bd958643022
 
@@ -16,6 +16,29 @@ https://github.com/user-attachments/assets/f2e005dc-b6b0-4023-b3d7-9bd958643022
 <!-- The film above is a file uploaded through github.com. To change it, upload the new file the same way and replace the link. -->
 
 ## Install (once)
+
+### Codex on Windows
+
+The maintained source fork is [rore/take-one](https://github.com/rore/take-one), based on upstream [talsiach/take-one](https://github.com/talsiach/take-one). Clone it for review or development:
+
+```powershell
+git clone https://github.com/rore/take-one.git
+cd take-one
+node scripts/doctor.mjs
+```
+
+For an upstream update, qualify it on a temporary branch before changing the skill you use:
+
+```powershell
+git remote add upstream https://github.com/talsiach/take-one.git
+git fetch upstream
+git switch -c qualify-upstream-update
+git rebase upstream/main
+```
+
+Review the diff and run the checks before updating your active skill checkout.
+
+To use it as a personal Codex skill, place or link the qualified checkout at `~/.agents/skills/take-one`, then start a new Codex session and invoke `$take-one`. Codex also supports repository skills in `.agents/skills`; explicit skill invocation varies by surface. Installation and updates are deliberate user actions. For the Windows tool behavior, optional dependencies, and update workflow, see [`references/codex-windows.md`](references/codex-windows.md).
 
 The easy way: paste this into Claude Code and it does the rest.
 
@@ -32,7 +55,7 @@ bash ~/.claude/skills/take-one/scripts/doctor.sh
 
 The second line checks your machine and says what is missing and what each piece is for. After that, Claude Code knows the skill in every session. A plain `git clone https://github.com/talsiach/take-one ~/.claude/skills/take-one` works too.
 
-You need Claude Code, Node 18 or later, Google Chrome and ffmpeg. So far it has been run on macOS only.
+For Claude Code, you need Node 18 or later, Google Chrome and ffmpeg. The Windows Codex path and its limitations are documented above; the original workflow was first run on macOS.
 
 ## How to work with it
 
@@ -109,7 +132,7 @@ If you keep your own taste in a file (a `TASTE.md`, a voice guide, an agent that
 
 ## What it costs
 
-- **Your Claude usage.** A 30 second film built in one session is roughly 0.4 to 0.7 million tokens and one to two hours. Longer films cost more; splitting the build across agents is faster and costs several times more. These are estimates; it tells you the size before it starts.
+- **Model usage.** Historical Opus/Claude runs used roughly 0.4 to 0.7 million tokens and one to two hours for a 30 second film. These figures are not Codex estimates or promises. Longer films and parallel agents can use more; the skill states uncertainty before it starts.
 - **Credits, only if you say yes.** The code-only way is free. Pictures and moving shots (it knows Higgsfield, with Nano Banana, Seedance and Kling), a voice (ElevenLabs) and music (Suno) are used through accounts you already have. It reads the real price first and asks. None of them is required.
 
 ## What to expect
