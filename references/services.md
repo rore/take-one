@@ -50,7 +50,7 @@ Keep `costs.jsonl` in the project from the first paid call and record each charg
 
 - One line per paid call, written when the call is made, not at the end.
 - After each batch say in one line what was spent and what is left of the cap.
-- A call that failed validation is not charged. A call that timed out may have started: read the job history and the balance before sending it again.
+- A failed or timed-out call may still have incurred a charge. Read the provider's job history and balance before retrying; record unresolved charges as unavailable until reconciled.
 - On delivery, give the total with the film. A spend from a free pool is still reported.
 
 ## Order of spending
