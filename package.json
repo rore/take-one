@@ -4,10 +4,11 @@
   "private": true,
   "description": "Claude Code skill: a short film from one line, built like a studio team and rendered from code (headless Chrome + ffmpeg).",
   "license": "MIT",
-  "engines": { "node": ">=18" },
+  "engines": { "node": ">=20" },
   "scripts": {
     "gate:self-test": "node scripts/gate.mjs --self-test",
-    "check": "for f in scripts/*.mjs scripts/music/*.mjs scripts/review-room/*.mjs assets/previews-src/snap.mjs; do node --check \"$f\" || exit 1; done && for f in scripts/*.sh; do bash -n \"$f\" || exit 1; done && echo all scripts parse"
+    "check": "node scripts/check.mjs",
+    "test": "node --test"
   },
   "dependencies": { "playwright-core": "^1.63.0" }
 }
