@@ -43,7 +43,7 @@ Use the first of these that exists, and say which one you are using:
 
 ## The ledger
 
-Keep `spend.md` in the project from the first paid call:
+Keep `costs.jsonl` in the project from the first paid call and record each charge there with `scripts/cost.mjs record` (see `references/costs.md`). `costs.jsonl` is the canonical record. If the project uses `spend.md` for the cap and readable service summary, derive each row from that same record; do not count or enter the charge twice.
 
 | When | Service | What for | Price read | Balance after |
 |---|---|---|---|---|
