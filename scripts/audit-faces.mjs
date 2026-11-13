@@ -7,7 +7,9 @@ const portrait = process.argv[2] === '1', step = Number(process.argv[3] || 0.125
 const FILM = process.env.FILM || 'film.html';
 const W = portrait ? 1080 : 1920, H = portrait ? 1920 : 1080;
 const { srv, url } = await serve('.');
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: process.platform === 'darwin' ? ['--use-angle=metal', '--ignore-gpu-blocklist'] : [] });
+// Metal is the Mac's graphics engine: ask for it on a Mac only, every other system keeps Chrome's own choice
+const GPU = process.platform === 'darwin' ? ['--use-angle=metal', '--ignore-gpu-blocklist'] : ['--ignore-gpu-blocklist'];
+const browser = await chromium.launch({ channel: 'chrome', headless: true, args: GPU });
 const page = await browser.newPage({ viewport: { width: W, height: H } });
 await page.goto(url + '/' + FILM + (portrait ? '?portrait=1' : ''));
 await page.waitForFunction(() => typeof window.renderFrame === 'function' && window.READY === true, null, { timeout: 120000 });

@@ -60,6 +60,8 @@ for (let i = 2; i < process.argv.length; i++) { const a = process.argv[i]; if (a
 const W = Number(process.env.W || 1920), H = Number(process.env.H || 1080);
 const SAMPLES = Math.max(4, Number(opt.samples ?? 12));
 const TMP = path.join(process.env.GATE_TMP || os.tmpdir(), `gate-${process.pid}`);
+// Metal is the Mac's graphics engine: ask for it on a Mac only, every other system keeps Chrome's own choice
+const GPU = process.platform === 'darwin' ? ['--use-angle=metal', '--ignore-gpu-blocklist'] : ['--ignore-gpu-blocklist'];
 
 let fails = 0, checks = 0;
 const say = (ok, label, detail = '') => { checks++; if (!ok) fails++; console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? '   ' + detail : ''}`); };
@@ -144,9 +146,11 @@ const determinism = async (browser, base, film) => {
       const a = path.join(TMP, `a-t${fmt(times[i])}.png`), b = path.join(TMP, `b-t${fmt(times[i])}.png`);
       fs.writeFileSync(a, p1[i]); fs.writeFileSync(b, p2[i]);
       const v = psnr(a, b); worst = Math.min(worst, v);
-      console.log(`        t=${fmt(times[i])}s: hashes differ, PSNR ${v === Infinity ? 'inf' : v.toFixed(2)} dB   (pngs kept in ${TMP})`);
+      console.log(`        t=${fmt(times[i])}s: hashes differ, PSNR ${v === Infinity ? 'inf' : v.toFixed(2)} dB   (pngs in ${TMP}, removed if this check passes)`);
     }
     say(worst > 45, `${times.length - same} differing frame(s) within PSNR tolerance (> 45 dB)`, `min PSNR ${worst === Infinity ? 'inf' : worst.toFixed(2)} dB`);
+    // the comparison pictures are only worth keeping when the check fails: 80 passing runs once left 2 GB behind and filled a disk
+    if (worst > 45) fs.rmSync(TMP, { recursive: true, force: true });
     // POISONING DIAGNOSIS. A failure is only useful if it says WHERE to look: redraw the bad
     // frame cold, then after each other sample frame in a fresh page, and name the poisoner.
     const bad = times.find((_, i) => h1[i] !== h2[i]);
@@ -297,7 +301,7 @@ const run = async () => {
   const { srv, url } = await serve(path.dirname(filmPath));
   let browser;
   try {
-    browser = await chromium.launch({ channel: 'chrome', headless: true, args: process.platform === 'darwin' ? ['--use-angle=metal', '--ignore-gpu-blocklist'] : [] });
+    browser = await chromium.launch({ channel: 'chrome', headless: true, args: GPU });
     const { pageHolds, pageCuts, pageFootage } = await determinism(browser, url, path.basename(filmPath));
     contractScan(filmPath);
     const mp4 = opt.mp4 && path.resolve(opt.mp4);

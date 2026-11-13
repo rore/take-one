@@ -75,7 +75,7 @@ A part that fails the first two reads as a template however polished it is. Name
 - [ ] Brand pass done: real typeface, colors, logo files, headline and CTA from the live site (`brand-pass.md`).
 
 **Technical**
-- [ ] The quality gate passes (`node ~/.claude/skills/take-one/scripts/gate.mjs film.html`, add `--mp4 out.mp4 --holds "a-b"` once exported). Run it before showing the user anything rendered — frames or MP4 — not after: it proves determinism by machine (cold-forward vs warmed-reverse hashes, and it names the frame that poisons a stale cache), scans the source for clocks/`Math.random`/filters, and measures dead air on the export. "Looks deterministic" is not a claim; a green gate is.
+- [ ] The quality gate passes (`node <skill>/scripts/gate.mjs film.html`, add `--mp4 out.mp4 --holds "a-b"` once exported). Run it before showing the user anything rendered — frames or MP4 — not after: it proves determinism by machine (cold-forward vs warmed-reverse hashes, and it names the frame that poisons a stale cache), scans the source for clocks/`Math.random`/filters, and measures dead air on the export. "Looks deterministic" is not a claim; a green gate is.
 - [ ] Gate check 4 (pops) is green: every frame-difference spike is a declared cut (`--cuts`), the rest fixed.
 - [ ] The master is exported with `SUB=8` for smooth-motion styles (kinetic, explainer, title, chrome, mono); never for stepped art (pipeline.md).
 - [ ] No console errors; `renderFrame(t)` deterministic (same t, same pixels, any order).

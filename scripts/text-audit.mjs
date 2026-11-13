@@ -20,10 +20,20 @@
 //   PINNED  small text parked in a corner zone for 6 s or more in total: a label, a counter, a name. A film is not a page.
 //   LONG    one big line (5 % of the height or more) held more than 6 s: the frame may have become a slide.
 //   FACE    text over a face, when the film exposes window.FACES = (t) => [[x, y, w, h], ...] in canvas pixels.
+//   BROKEN  a value that failed to compute, printed on screen for any length of time: NaN, undefined, Infinity or
+//           [object Object] as a word (a counter whose start was shifted to -1.1 showed "NaN" for a whole beat). FAIL.
+//           A lone "null" as a word is a WARN.
+//   OVERLAP two different texts printed on top of each other for 0.3 s or more (a label over a label, a caption over a
+//           number). It counts when the overlap covers a fifth of the smaller text's width and a quarter of its height, so
+//           a descender touching the next line or two words crossing in a transition pass. The same text drawn twice (an
+//           outline, a glow, a counter changing its value) and two single letters (a rolling digit) are left alone. A FAIL
+//           needs the two to sit still on each other; one moving across the other, or a huge word across small text (it is
+//           sometimes the design), is a WARN.
 //
 // Exit 1 when there is a FAIL. WARN lines are leads: look at each one and either fix it or say why it stays.
 // Limits: it sees text drawn with fillText/strokeText only (not words inside pictures or SVGs), it does not know about clip
-// regions or about something painted over the text later, and it reads size, not contrast. Text meant as texture can be
+// regions or about something painted over the text later (so text hidden by a mask can still show up as an OVERLAP), it
+// does not see text over drawings, and it reads size, not contrast. Text meant as texture can be
 // skipped with --ignore.
 import fs from 'node:fs';
 import http from 'node:http';
@@ -122,15 +132,40 @@ for (const r of done) { const held = r.t1 - r.t0 + STEP, w = words(r.s); if (!w)
   const need = 0.4 + 0.2 * w; if (held < need && !nearEnd && r.minPx / H >= 0.035) add(held < need * 0.6 ? 'FAIL' : 'WARN', 'FLASH', r, `${w} word${w > 1 ? 's' : ''} up for ${f(held)} s, needs about ${f(need)} s`);
   if (r.edge >= 0.8 && r.maxPx / H < 0.2) add('WARN', 'EDGE', r, `partly out of the frame for ${f(r.edge)} s`);
   if (r.faceHit) add('FAIL', 'FACE', r, 'sits on a face');
+  if (/(^|[^\p{L}])(NaN|undefined|Infinity)([^\p{L}]|$)|\[object [A-Za-z]+\]/u.test(r.s)) add('FAIL', 'BROKEN', r, 'a value that failed to compute is on screen');
+  else if (/(^|[^\p{L}])null([^\p{L}]|$)/u.test(r.s)) add('WARN', 'BROKEN', r, '"null" on screen: a missing value?');
   if (r.maxPx / H < 0.05 && r.corner > 0) pinned.set(r.s, (pinned.get(r.s) || 0) + r.corner);
   if (held > 6 && w >= 2 && r.minPx / H >= 0.05) add('WARN', 'LONG', r, `held ${f(held)} s: the same frame for too long?`);
 }
+// OVERLAP: within each sample, every pair of different visible texts; a pair that keeps overlapping for 0.3 s is reported once
+const key = (s) => s.replace(/\d+/g, '#').replace(/[.\u2026\s]+$/, ''), pairs = new Map(), crossed = [];
+for (const smp of samples) {
+  const vis = smp.txt.filter((d) => d.a >= 0.5 && d.px >= 1 && !(ign && ign.test(d.s)) && d.x1 > 0 && d.x0 < W && d.y1 > 0 && d.y0 < H);
+  for (let i = 0; i < vis.length; i++) for (let j = i + 1; j < vis.length; j++) {
+    const u = vis[i], v = vis[j], ku = key(u.s), kv = key(v.s);
+    if (ku === kv) continue;                                                  // the same text twice: an outline, a glow, a counter
+    if (u.s.trim().length < 2 && v.s.trim().length < 2) continue;             // two single letters: a rolling digit, a letter flying in
+    const sm = (u.x1 - u.x0) * (u.y1 - u.y0) <= (v.x1 - v.x0) * (v.y1 - v.y0) ? u : v, lg = sm === u ? v : u;
+    const ow = Math.min(u.x1, v.x1) - Math.max(u.x0, v.x0), oh = Math.min(u.y1, v.y1) - Math.max(u.y0, v.y0);
+    if (ow < 0.2 * (sm.x1 - sm.x0) || oh < 0.25 * (sm.y1 - sm.y0)) continue;
+    const big = lg.y1 - lg.y0 >= 3 * (sm.y1 - sm.y0);                         // a huge word across small text
+    const rx = (sm.x0 + sm.x1 - lg.x0 - lg.x1) / 2, ry = (sm.y0 + sm.y1 - lg.y0 - lg.y1) / 2;   // where one sits on the other
+    const k = [ku, kv].sort().join('\n'); let r = pairs.get(k);
+    if (r && smp.t - r.t1 > STEP * 2.5) { crossed.push(r); r = null; }
+    if (!r) { r = { s: lg.s, over: sm.s, t0: smp.t, t1: smp.t, big, still: STEP, rx, ry }; pairs.set(k, r); }
+    else if (Math.abs(rx - r.rx) < 4 && Math.abs(ry - r.ry) < 4) r.still += STEP;   // still in the same place on each other
+    r.t1 = smp.t; r.big = r.big && big; r.rx = rx; r.ry = ry;
+  }
+}
+// a FAIL needs the two to sit still on each other for 0.3 s; one passing across the other (a coin flying over a line) is a WARN
+for (const r of [...crossed, ...pairs.values()]) { const held = r.t1 - r.t0 + STEP, moving = r.still < 0.3 - 1e-6;
+  if (held >= 0.3) add(r.big || moving ? 'WARN' : 'FAIL', 'OVERLAP', r, `overlaps ${q(r.over)} for ${f(held)} s${r.big ? ' (a huge word across small text: on purpose?)' : moving ? ' (one moves across the other)' : ''}`); }
 for (const [s, sec] of pinned) if (sec >= 6) finds.push({ sev: 'WARN', rule: 'PINNED', t0: 0, t1: D, text: s, why: `small text in a corner for ${f(sec)} s in all` });
 finds.sort((a, b) => (a.sev === b.sev ? a.t0 - b.t0 : a.sev === 'FAIL' ? -1 : 1));
 const fails = finds.filter((x) => x.sev === 'FAIL').length, warns = finds.length - fails;
 console.log(`TEXT AUDIT   ${path.basename(film)}   ${W}x${H}, ${f(D)} s, a sample every ${STEP} s, ${done.length} pieces of text${info.faces ? '' : '   (no window.FACES: the face check did not run)'}`);
 if (errs.length) console.log('  page errors while drawing: ' + errs.slice(0, 3).join(' | '));
-for (const x of finds) console.log(`  ${x.sev}  ${x.rule.padEnd(6)} ${(f(x.t0) + '-' + f(x.t1) + ' s').padEnd(15)} ${q(x.text).padEnd(52)} ${x.why}`);
+for (const x of finds) console.log(`  ${x.sev}  ${x.rule.padEnd(7)} ${(f(x.t0) + '-' + f(x.t1) + ' s').padEnd(15)} ${q(x.text).padEnd(52)} ${x.why}`);
 console.log(fails ? `TEXT AUDIT: FAIL   ${fails} to fix, ${warns} to look at` : warns ? `TEXT AUDIT: PASS with ${warns} to look at` : 'TEXT AUDIT: PASS');
 if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify({ film: path.basename(film), W, H, D, step: STEP, finds, texts: done.map((r) => ({ text: r.s, t0: r.t0, t1: r.t1, minPx: r.minPx, maxPx: r.maxPx })) }, null, 1));
 process.exit(fails ? 1 : 0);

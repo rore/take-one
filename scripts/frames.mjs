@@ -13,10 +13,12 @@ const W = Number(process.env.W || (portrait ? 1080 : 1920)), H = Number(process.
 const dir = (FILM === 'film.html' ? 'review/' : 'review-' + FILM.replace('.html', '') + '/') + (portrait ? 'portrait' : 'square');
 fs.mkdirSync(dir, { recursive: true });
 const { srv, url } = await serve('.');
+// Metal is the Mac's graphics engine: ask for it on a Mac only, every other system keeps Chrome's own choice
+const GPU = process.platform === 'darwin' ? ['--use-angle=metal', '--ignore-gpu-blocklist'] : ['--ignore-gpu-blocklist'];
 let browser;
 const errs = [], frames = [];
 try {
-browser = await chromium.launch({ channel: 'chrome', headless: true, args: process.platform === 'darwin' ? ['--use-angle=metal', '--ignore-gpu-blocklist'] : [] });
+browser = await chromium.launch({ channel: 'chrome', headless: true, args: GPU });
 const page = await browser.newPage({ viewport: { width: W, height: H } });
 page.on('pageerror', e => errs.push(e.message)); page.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.location()?.url ?? '')) errs.push(m.text()); });
 await page.goto(url + '/' + FILM + (portrait ? '?portrait=1' : ''));

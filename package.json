@@ -7,6 +7,7 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "gate:self-test": "node scripts/gate.mjs --self-test",
+    "edge:self-test": "node scripts/edge-audit.mjs --self-test",
     "check": "node scripts/check.mjs",
     "test": "node --test scripts/helpers.test.mjs tests/cost.test.mjs"
   },
